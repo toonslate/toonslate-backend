@@ -16,6 +16,10 @@ dev = [
     "pyright>=1.1.408",
     "ruff>=0.14.14",
 ]
+test = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.25.0",
+]
 
 [tool.ruff]
 line-length = 100
@@ -25,6 +29,11 @@ select = ["E", "W", "F", "I", "UP", "B", "SIM", "RET"]
 
 [tool.pyright]
 pythonVersion = "3.11"
-typeCheckingMode = "basic"
+typeCheckingMode = "strict"
 venvPath = "."
 venv = ".venv"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
