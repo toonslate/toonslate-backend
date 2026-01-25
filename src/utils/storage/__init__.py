@@ -16,17 +16,16 @@ def _find_project_root() -> Path:
     raise RuntimeError("프로젝트 루트를 찾을 수 없음")
 
 
-_storage: StorageBackend | None = None
+class _StorageHolder:
+    instance: StorageBackend | None = None
 
 
 def get_storage() -> StorageBackend:
-    global _storage
-    if _storage is None:
+    if _StorageHolder.instance is None:
         upload_dir = _find_project_root() / "uploads"
-        _storage = LocalStorage(base_dir=upload_dir)
-    return _storage
+        _StorageHolder.instance = LocalStorage(base_dir=upload_dir)
+    return _StorageHolder.instance
 
 
 def set_storage(storage: StorageBackend) -> None:
-    global _storage
-    _storage = storage
+    _StorageHolder.instance = storage
