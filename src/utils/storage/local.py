@@ -15,7 +15,9 @@ class LocalStorage:
         self.base_dir = base_dir
         self.base_url = base_url
 
-    async def save(self, file: UploadFile, subdir: str = "original") -> str:
+    async def save(
+        self, file: UploadFile, subdir: str = "original", filename: str | None = None
+    ) -> str:
         """
         Raises:
             HTTPException(400): 지원하지 않는 파일 형식 또는 10MB 초과 시
@@ -25,10 +27,10 @@ class LocalStorage:
 
         content = await self._read_with_size_limit(file)
 
-        upload_id = uuid.uuid4().hex
+        name = filename or uuid.uuid4().hex
         ext = Path(file.filename or "").suffix or ".jpg"
 
-        relative_path = f"{subdir}/{upload_id}{ext}"
+        relative_path = f"{subdir}/{name}{ext}"
         save_path = self.base_dir / relative_path
         save_path.parent.mkdir(parents=True, exist_ok=True)
 
