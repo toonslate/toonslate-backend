@@ -54,7 +54,11 @@ async def create_upload(file: UploadFile) -> UploadResponse:
         created_at=created_at,
     )
 
-    await redis.set(f"upload:{upload_id}", metadata.model_dump_json(), ex=UPLOAD_TTL)
+    try:
+        await redis.set(f"upload:{upload_id}", metadata.model_dump_json(), ex=UPLOAD_TTL)
+    except Exception:
+        storage.delete(path)
+        raise
 
     ext = Path(file.filename or "").suffix or ".jpg"
     image_url = f"{settings.base_url}/static/original/{upload_id}{ext}"

@@ -22,6 +22,7 @@ app.include_router(upload_router)
 # LocalStorage인 경우에만 StaticFiles 마운트 (S3 전환 시 제거)
 storage = get_storage()
 if isinstance(storage, LocalStorage):
+    storage.base_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/static", StaticFiles(directory=storage.base_dir), name="static")
 
 

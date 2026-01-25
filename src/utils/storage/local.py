@@ -43,6 +43,13 @@ class LocalStorage:
     def exists(self, relative_path: str) -> bool:
         return (self.base_dir / relative_path).exists()
 
+    def delete(self, relative_path: str) -> bool:
+        file_path = self.base_dir / relative_path
+        if file_path.exists():
+            file_path.unlink()
+            return True
+        return False
+
     def _validate_content_type(self, content_type: str | None) -> None:
         if not content_type or content_type not in ALLOWED_TYPES:
             raise HTTPException(
