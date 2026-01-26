@@ -8,9 +8,9 @@ from pydantic import BaseModel
 
 from src.config import get_settings
 from src.constants import TTL, RedisPrefix
+from src.infra.redis import get_redis
+from src.infra.storage import get_storage
 from src.schemas.base import BaseSchema
-from src.utils.redis import get_redis
-from src.utils.storage import get_storage
 
 
 class UploadMetadata(BaseModel):

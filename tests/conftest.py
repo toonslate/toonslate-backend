@@ -7,10 +7,10 @@ import fakeredis
 import pytest
 from fastapi.testclient import TestClient
 
+from src.infra.redis import set_redis
+from src.infra.storage import set_storage
+from src.infra.storage.local import LocalStorage
 from src.main import app
-from src.utils.redis import set_redis
-from src.utils.storage import set_storage
-from src.utils.storage.local import LocalStorage
 
 
 @pytest.fixture

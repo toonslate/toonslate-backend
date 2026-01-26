@@ -8,10 +8,10 @@ from pydantic import BaseModel
 
 from src.config import get_settings
 from src.constants import TTL, Limits, RedisPrefix
+from src.infra.redis import get_redis
 from src.schemas.base import BaseSchema
 from src.services.upload import get_upload
 from src.tasks.process_job import process_job
-from src.utils.redis import get_redis
 
 JobStatus = Literal["pending", "processing", "completed", "failed"]
 
