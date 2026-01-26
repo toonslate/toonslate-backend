@@ -80,17 +80,31 @@ async def _validate_upload_ids(upload_ids: list[str]) -> None:
             raise InvalidUploadError(upload_id)
 
 
+_RATE_LIMIT_SCRIPT = """
+local current = tonumber(redis.call("GET", KEYS[1]) or "0")
+if current >= tonumber(ARGV[1]) then
+    return -1
+end
+redis.call("INCR", KEYS[1])
+redis.call("EXPIRE", KEYS[1], ARGV[2])
+return current + 1
+"""
+
+
 async def _check_and_increment_usage(client_ip: str) -> None:
     redis = get_redis()
     usage_key = _get_usage_key(client_ip)
 
-    pipe = redis.pipeline()
-    pipe.incr(usage_key)
-    pipe.expire(usage_key, TTL.USAGE)
-    results = await pipe.execute()
+    # redis-py async 타입 힌트 버그 (https://github.com/redis/redis-py/issues/3107)
+    result: int = await redis.eval(  # type: ignore[misc]
+        _RATE_LIMIT_SCRIPT,
+        1,
+        usage_key,
+        Limits.DAILY_JOB,
+        TTL.USAGE,
+    )
 
-    current_count = results[0]
-    if current_count > Limits.DAILY_JOB:
+    if result == -1:
         raise RateLimitExceededError()
 
 
