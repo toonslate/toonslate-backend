@@ -1,3 +1,4 @@
+import hashlib
 import json
 import uuid
 from datetime import UTC, datetime
@@ -5,6 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from src.config import get_settings
 from src.constants import TTL, Limits, RedisPrefix
 from src.schemas.base import BaseSchema
 from src.services.upload import get_upload
@@ -60,9 +62,15 @@ def _generate_job_id() -> str:
     return f"job_{uuid.uuid4().hex[:8]}"
 
 
+def _hash_ip(ip: str) -> str:
+    secret = get_settings().ip_hash_secret
+    return hashlib.sha256(f"{secret}:{ip}".encode()).hexdigest()[:16]
+
+
 def _get_usage_key(client_ip: str) -> str:
+    hashed_ip = _hash_ip(client_ip)
     today = datetime.now(UTC).strftime("%Y-%m-%d")
-    return f"{RedisPrefix.USAGE}:{client_ip}:{today}"
+    return f"{RedisPrefix.USAGE}:{hashed_ip}:{today}"
 
 
 async def _validate_upload_ids(upload_ids: list[str]) -> None:
@@ -72,30 +80,25 @@ async def _validate_upload_ids(upload_ids: list[str]) -> None:
             raise InvalidUploadError(upload_id)
 
 
-async def _check_rate_limit(client_ip: str) -> None:
-    redis = get_redis()
-    usage_key = _get_usage_key(client_ip)
-
-    count = await redis.get(usage_key)
-    if count is not None and int(count) >= Limits.DAILY_JOB:
-        raise RateLimitExceededError()
-
-
-async def _increment_usage(client_ip: str) -> None:
+async def _check_and_increment_usage(client_ip: str) -> None:
     redis = get_redis()
     usage_key = _get_usage_key(client_ip)
 
     pipe = redis.pipeline()
     pipe.incr(usage_key)
     pipe.expire(usage_key, TTL.USAGE)
-    await pipe.execute()
+    results = await pipe.execute()
+
+    current_count = results[0]
+    if current_count > Limits.DAILY_JOB:
+        raise RateLimitExceededError()
 
 
 async def create_job(request: JobCreateRequest, client_ip: str) -> JobResponse:
     redis = get_redis()
 
     await _validate_upload_ids(request.upload_ids)
-    await _check_rate_limit(client_ip)
+    await _check_and_increment_usage(client_ip)
 
     job_id = _generate_job_id()
     created_at = datetime.now(UTC).isoformat().replace("+00:00", "Z")
@@ -109,8 +112,6 @@ async def create_job(request: JobCreateRequest, client_ip: str) -> JobResponse:
     )
 
     await redis.set(f"{RedisPrefix.JOB}:{job_id}", metadata.model_dump_json(), ex=TTL.JOB)
-
-    await _increment_usage(client_ip)
 
     process_job.delay(job_id)
 
