@@ -1,5 +1,6 @@
 import tempfile
 from collections.abc import Generator
+from io import BytesIO
 from pathlib import Path
 
 import fakeredis
@@ -36,3 +37,24 @@ def client(
     set_storage(storage)
     set_redis(fake_redis)
     yield TestClient(app)
+
+
+@pytest.fixture
+def upload_id(client: TestClient) -> str:
+    response = client.post(
+        "/upload",
+        files={"file": ("test.jpg", BytesIO(b"fake jpeg"), "image/jpeg")},
+    )
+    return response.json()["uploadId"]
+
+
+@pytest.fixture
+def job_id(client: TestClient, upload_id: str) -> str:
+    response = client.post(
+        "/jobs",
+        json={
+            "uploadIds": [upload_id],
+            "options": {"sourceLanguage": "ko", "targetLanguage": "en"},
+        },
+    )
+    return response.json()["jobId"]
