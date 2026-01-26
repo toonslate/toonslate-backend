@@ -19,4 +19,5 @@ celery_app.conf.update(
     timezone="UTC",
     enable_utc=True,
     result_expires=RESULT_EXPIRES,
+    imports=["src.tasks.process_job"],
 )
