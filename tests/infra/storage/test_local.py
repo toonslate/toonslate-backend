@@ -4,7 +4,7 @@ import pytest
 from fastapi import HTTPException, UploadFile
 from starlette.datastructures import Headers
 
-from src.utils.storage.local import ALLOWED_TYPES, MAX_SIZE, LocalStorage
+from src.infra.storage.local import ALLOWED_TYPES, MAX_SIZE, LocalStorage
 
 
 def create_upload_file(

@@ -7,10 +7,10 @@ from fastapi import UploadFile
 from pydantic import BaseModel
 
 from src.config import get_settings
-from src.utils.redis import get_redis
-from src.utils.storage import get_storage
-
-UPLOAD_TTL = 60 * 60 * 24  # 24시간
+from src.constants import TTL, RedisPrefix
+from src.infra.redis import get_redis
+from src.infra.storage import get_storage
+from src.schemas.base import BaseSchema
 
 
 class UploadMetadata(BaseModel):
@@ -22,7 +22,7 @@ class UploadMetadata(BaseModel):
     created_at: str
 
 
-class UploadResponse(BaseModel):
+class UploadResponse(BaseSchema):
     upload_id: str
     image_url: str
     filename: str
@@ -54,7 +54,13 @@ async def create_upload(file: UploadFile) -> UploadResponse:
         created_at=created_at,
     )
 
-    await redis.set(f"upload:{upload_id}", metadata.model_dump_json(), ex=UPLOAD_TTL)
+    try:
+        await redis.set(
+            f"{RedisPrefix.UPLOAD}:{upload_id}", metadata.model_dump_json(), ex=TTL.UPLOAD
+        )
+    except Exception:
+        storage.delete(path)
+        raise
 
     ext = Path(file.filename or "").suffix or ".jpg"
     image_url = f"{settings.base_url}/static/original/{upload_id}{ext}"
@@ -73,7 +79,7 @@ async def get_upload(upload_id: str) -> UploadResponse | None:
     redis = get_redis()
     settings = get_settings()
 
-    data = await redis.get(f"upload:{upload_id}")
+    data = await redis.get(f"{RedisPrefix.UPLOAD}:{upload_id}")
     if data is None:
         return None
 
