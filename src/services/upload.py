@@ -7,10 +7,10 @@ from fastapi import UploadFile
 from pydantic import BaseModel
 
 from src.config import get_settings
+from src.constants import TTL, RedisPrefix
+from src.schemas.base import BaseSchema
 from src.utils.redis import get_redis
 from src.utils.storage import get_storage
-
-UPLOAD_TTL = 60 * 60 * 24  # 24시간
 
 
 class UploadMetadata(BaseModel):
@@ -22,7 +22,7 @@ class UploadMetadata(BaseModel):
     created_at: str
 
 
-class UploadResponse(BaseModel):
+class UploadResponse(BaseSchema):
     upload_id: str
     image_url: str
     filename: str
@@ -55,7 +55,9 @@ async def create_upload(file: UploadFile) -> UploadResponse:
     )
 
     try:
-        await redis.set(f"upload:{upload_id}", metadata.model_dump_json(), ex=UPLOAD_TTL)
+        await redis.set(
+            f"{RedisPrefix.UPLOAD}:{upload_id}", metadata.model_dump_json(), ex=TTL.UPLOAD
+        )
     except Exception:
         storage.delete(path)
         raise
@@ -77,7 +79,7 @@ async def get_upload(upload_id: str) -> UploadResponse | None:
     redis = get_redis()
     settings = get_settings()
 
-    data = await redis.get(f"upload:{upload_id}")
+    data = await redis.get(f"{RedisPrefix.UPLOAD}:{upload_id}")
     if data is None:
         return None
 

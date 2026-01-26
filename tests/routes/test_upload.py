@@ -12,12 +12,12 @@ class TestUploadPost:
 
         assert response.status_code == 201
         data = response.json()
-        assert data["upload_id"].startswith("upload_")
-        assert len(data["upload_id"]) == 15  # "upload_" + 8 chars
+        assert data["uploadId"].startswith("upload_")
+        assert len(data["uploadId"]) == 15  # "upload_" + 8 chars
         assert data["filename"] == "test.jpg"
-        assert data["content_type"] == "image/jpeg"
-        assert "image_url" in data
-        assert "created_at" in data
+        assert data["contentType"] == "image/jpeg"
+        assert "imageUrl" in data
+        assert "createdAt" in data
 
     def test_upload_png(self, client: TestClient) -> None:
         response = client.post(
@@ -26,7 +26,7 @@ class TestUploadPost:
         )
 
         assert response.status_code == 201
-        assert response.json()["content_type"] == "image/png"
+        assert response.json()["contentType"] == "image/png"
 
     def test_reject_invalid_content_type(self, client: TestClient) -> None:
         response = client.post(
@@ -48,19 +48,17 @@ class TestUploadPost:
 
 class TestUploadGet:
     def test_get_upload(self, client: TestClient) -> None:
-        # 먼저 업로드
         upload_response = client.post(
             "/upload",
             files={"file": ("test.jpg", BytesIO(b"fake jpeg"), "image/jpeg")},
         )
-        upload_id = upload_response.json()["upload_id"]
+        upload_id = upload_response.json()["uploadId"]
 
-        # 조회
         response = client.get(f"/upload/{upload_id}")
 
         assert response.status_code == 200
         data = response.json()
-        assert data["upload_id"] == upload_id
+        assert data["uploadId"] == upload_id
         assert data["filename"] == "test.jpg"
 
     def test_get_nonexistent_upload(self, client: TestClient) -> None:

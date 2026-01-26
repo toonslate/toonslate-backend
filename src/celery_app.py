@@ -1,8 +1,7 @@
 from celery import Celery
 
 from src.config import get_settings
-
-RESULT_EXPIRES = 60 * 60 * 24  # 24시간
+from src.constants import TTL
 
 settings = get_settings()
 
@@ -18,6 +17,6 @@ celery_app.conf.update(
     accept_content=["json"],
     timezone="UTC",
     enable_utc=True,
-    result_expires=RESULT_EXPIRES,
+    result_expires=TTL.CELERY_RESULT,
     imports=["src.tasks.process_job"],
 )
