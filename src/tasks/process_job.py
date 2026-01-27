@@ -44,6 +44,37 @@ async def _get_image_path(job_id: str) -> str | None:
     return storage.get_absolute_path(relative_path)
 
 
+async def _process_job_async(job_id: str) -> dict[str, Any]:
+    """비동기 작업 처리 (asyncio.run 한 번만 호출하기 위해 분리)"""
+    await update_job_status(job_id, "processing")
+
+    image_path = await _get_image_path(job_id)
+    if not image_path:
+        await update_job_status(job_id, "failed", error_message="이미지를 찾을 수 없음")
+        return {"job_id": job_id, "status": "failed", "error": "이미지를 찾을 수 없음"}
+
+    logger.info(f"Running detection for: {image_path}")
+    detection_result = detect_regions(image_path)
+
+    logger.info(
+        f"Detection complete: {len(detection_result.bubbles)} bubbles, "
+        f"{len(detection_result.texts)} texts"
+    )
+
+    # TODO: OCR → 번역 → Inpainting → 렌더링 (Day 6 이후)
+
+    await update_job_status(job_id, "completed")
+
+    return {
+        "job_id": job_id,
+        "status": "completed",
+        "detection": {
+            "bubbles": len(detection_result.bubbles),
+            "texts": len(detection_result.texts),
+        },
+    }
+
+
 @celery_app.task(soft_time_limit=300, time_limit=360)
 def process_job(job_id: str) -> dict[str, Any]:
     """작업 처리 태스크
@@ -56,33 +87,7 @@ def process_job(job_id: str) -> dict[str, Any]:
     logger.info(f"Processing job: {job_id}")
 
     try:
-        asyncio.run(update_job_status(job_id, "processing"))
-
-        image_path = asyncio.run(_get_image_path(job_id))
-        if not image_path:
-            asyncio.run(update_job_status(job_id, "failed", error_message="이미지를 찾을 수 없음"))
-            return {"job_id": job_id, "status": "failed"}
-
-        logger.info(f"Running detection for: {image_path}")
-        detection_result = detect_regions(image_path)
-
-        logger.info(
-            f"Detection complete: {len(detection_result.bubbles)} bubbles, "
-            f"{len(detection_result.texts)} texts"
-        )
-
-        # TODO: OCR → 번역 → Inpainting → 렌더링 (Day 6 이후)
-
-        asyncio.run(update_job_status(job_id, "completed"))
-
-        return {
-            "job_id": job_id,
-            "status": "completed",
-            "detection": {
-                "bubbles": len(detection_result.bubbles),
-                "texts": len(detection_result.texts),
-            },
-        }
+        return asyncio.run(_process_job_async(job_id))
 
     except SoftTimeLimitExceeded:
         logger.error(f"Job {job_id} timed out")

@@ -4,7 +4,7 @@
 import time
 from typing import Any
 
-from gradio_client import Client
+from gradio_client import Client, handle_file
 from pydantic import BaseModel
 
 from src.config import get_settings
@@ -46,7 +46,7 @@ def detect_regions(image_path: str, max_retries: int = 3) -> DetectionResult:
     for attempt in range(max_retries):
         try:
             result: Any = client.predict(  # pyright: ignore[reportUnknownMemberType]
-                image_path, api_name="/predict"
+                handle_file(image_path), api_name="/detect"
             )
             return DetectionResult.model_validate(result)
         except Exception as e:
