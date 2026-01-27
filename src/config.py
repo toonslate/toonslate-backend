@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     # Security
     ip_hash_secret: str = "change-me-in-production"
 
+    # HuggingFace Space
+    hf_space_url: str = "lazistar/toonslate-detector"
+    hf_api_timeout: int = 120
+
 
 @lru_cache
 def get_settings() -> Settings:
