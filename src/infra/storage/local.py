@@ -40,6 +40,9 @@ class LocalStorage:
     def get_url(self, relative_path: str) -> str:
         return f"{self.base_url}/{relative_path}"
 
+    def get_absolute_path(self, relative_path: str) -> str:
+        return str(self.base_dir / relative_path)
+
     def exists(self, relative_path: str) -> bool:
         return (self.base_dir / relative_path).exists()
 
