@@ -2,6 +2,7 @@ import json
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 from fastapi import UploadFile
 from pydantic import BaseModel
@@ -55,9 +56,7 @@ async def create_upload(file: UploadFile) -> UploadResponse:
     )
 
     try:
-        await redis.set(
-            f"{RedisPrefix.UPLOAD}:{upload_id}", metadata.model_dump_json(), ex=TTL.UPLOAD
-        )
+        redis.set(f"{RedisPrefix.UPLOAD}:{upload_id}", metadata.model_dump_json(), ex=TTL.UPLOAD)
     except Exception:
         storage.delete(path)
         raise
@@ -79,11 +78,11 @@ async def get_upload(upload_id: str) -> UploadResponse | None:
     redis = get_redis()
     settings = get_settings()
 
-    data = await redis.get(f"{RedisPrefix.UPLOAD}:{upload_id}")
+    data = redis.get(f"{RedisPrefix.UPLOAD}:{upload_id}")
     if data is None:
         return None
 
-    metadata = UploadMetadata.model_validate(json.loads(data))
+    metadata = UploadMetadata.model_validate(json.loads(cast(str, data)))
     ext = Path(metadata.path).suffix
 
     return UploadResponse(

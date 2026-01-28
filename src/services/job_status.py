@@ -1,6 +1,6 @@
 import json
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Literal, cast
 
 from pydantic import BaseModel
 
@@ -27,7 +27,7 @@ class JobMetadata(BaseModel):
     error_message: str | None = None
 
 
-async def update_job_status(
+def update_job_status(
     job_id: str,
     status: JobStatus,
     result_url: str | None = None,
@@ -35,11 +35,11 @@ async def update_job_status(
 ) -> bool:
     redis = get_redis()
 
-    data = await redis.get(f"{RedisPrefix.JOB}:{job_id}")
+    data = redis.get(f"{RedisPrefix.JOB}:{job_id}")
     if data is None:
         return False
 
-    metadata = JobMetadata.model_validate(json.loads(data))
+    metadata = JobMetadata.model_validate(json.loads(cast(str, data)))
     metadata.status = status
 
     if status in ("completed", "failed"):
@@ -51,5 +51,5 @@ async def update_job_status(
     if error_message:
         metadata.error_message = error_message
 
-    await redis.set(f"{RedisPrefix.JOB}:{job_id}", metadata.model_dump_json(), ex=TTL.JOB)
+    redis.set(f"{RedisPrefix.JOB}:{job_id}", metadata.model_dump_json(), ex=TTL.JOB)
     return True
