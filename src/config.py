@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     hf_space_url: str = "lazistar/toonslate-detector"
     hf_api_timeout: int = 120
 
+    # Gemini API
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.5-flash"
+
 
 @lru_cache
 def get_settings() -> Settings:
