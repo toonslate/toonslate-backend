@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     celery_broker_url: str = "redis://localhost:6379/0"
     celery_result_backend: str = "redis://localhost:6379/1"
 
+    # CORS
+    cors_origins: list[str] = ["http://localhost:5173"]
+
     # Security
     ip_hash_secret: str = "change-me-in-production"
 
