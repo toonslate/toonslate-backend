@@ -1,4 +1,4 @@
-import redis.asyncio as redis
+import redis
 
 from src.config import get_settings
 
@@ -18,9 +18,9 @@ def get_redis() -> redis.Redis:
     return _RedisHolder.client
 
 
-async def close_redis() -> None:
+def close_redis() -> None:
     if _RedisHolder.client is not None:
-        await _RedisHolder.client.aclose()
+        _RedisHolder.client.close()
         _RedisHolder.client = None
 
 

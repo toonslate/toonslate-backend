@@ -17,12 +17,19 @@ class Settings(BaseSettings):
     celery_broker_url: str = "redis://localhost:6379/0"
     celery_result_backend: str = "redis://localhost:6379/1"
 
+    # CORS
+    cors_origins: list[str] = ["http://localhost:5173"]
+
     # Security
     ip_hash_secret: str = "change-me-in-production"
 
     # HuggingFace Space
     hf_space_url: str = "lazistar/toonslate-detector"
     hf_api_timeout: int = 120
+
+    # Gemini API
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.5-flash"
 
 
 @lru_cache

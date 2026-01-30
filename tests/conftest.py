@@ -2,6 +2,7 @@ import tempfile
 from collections.abc import Generator
 from io import BytesIO
 from pathlib import Path
+from unittest.mock import patch
 
 import fakeredis
 import pytest
@@ -25,18 +26,19 @@ def local_storage(temp_upload_dir: Path) -> LocalStorage:
 
 
 @pytest.fixture
-def fake_redis() -> fakeredis.FakeAsyncRedis:
-    return fakeredis.FakeAsyncRedis(decode_responses=True)
+def fake_redis() -> fakeredis.FakeRedis:
+    return fakeredis.FakeRedis(decode_responses=True)
 
 
 @pytest.fixture
 def client(
-    temp_upload_dir: Path, fake_redis: fakeredis.FakeAsyncRedis
+    temp_upload_dir: Path, fake_redis: fakeredis.FakeRedis
 ) -> Generator[TestClient, None, None]:
     storage = LocalStorage(base_dir=temp_upload_dir, base_url="http://localhost:8000/static")
     set_storage(storage)
     set_redis(fake_redis)
-    yield TestClient(app)
+    with patch("src.services.job.process_job"):
+        yield TestClient(app)
 
 
 @pytest.fixture

@@ -1,7 +1,9 @@
+import asyncio
 import hashlib
 import json
 import uuid
 from datetime import UTC, datetime
+from typing import cast
 
 from src.config import get_settings
 from src.constants import TTL, Limits, RedisPrefix
@@ -75,8 +77,7 @@ async def _check_and_increment_usage(client_ip: str) -> None:
     redis = get_redis()
     usage_key = _get_usage_key(client_ip)
 
-    # redis-py async 타입 힌트 버그 (https://github.com/redis/redis-py/issues/3107)
-    result: int = await redis.eval(  # type: ignore[misc]
+    result: int = redis.eval(  # type: ignore[assignment]
         _RATE_LIMIT_SCRIPT,
         1,
         usage_key,
@@ -105,9 +106,9 @@ async def create_job(request: JobCreateRequest, client_ip: str) -> JobResponse:
         created_at=created_at,
     )
 
-    await redis.set(f"{RedisPrefix.JOB}:{job_id}", metadata.model_dump_json(), ex=TTL.JOB)
+    redis.set(f"{RedisPrefix.JOB}:{job_id}", metadata.model_dump_json(), ex=TTL.JOB)
 
-    process_job.delay(job_id)
+    await asyncio.to_thread(process_job.delay, job_id)
 
     return JobResponse(
         job_id=metadata.job_id,
@@ -121,11 +122,11 @@ async def create_job(request: JobCreateRequest, client_ip: str) -> JobResponse:
 async def get_job(job_id: str) -> JobResponse | None:
     redis = get_redis()
 
-    data = await redis.get(f"{RedisPrefix.JOB}:{job_id}")
+    data = redis.get(f"{RedisPrefix.JOB}:{job_id}")
     if data is None:
         return None
 
-    metadata = JobMetadata.model_validate(json.loads(data))
+    metadata = JobMetadata.model_validate(json.loads(cast(str, data)))
 
     return JobResponse(
         job_id=metadata.job_id,
