@@ -4,40 +4,17 @@ import cv2
 import numpy as np
 
 from src.schemas.pipeline import BBox, TextRegion
-
-INSCRIBED_RATIO = 0.65  # 타원 내접 직사각형 비율 (수학적 최대: 0.707)
-OVERLAP_THRESHOLD = 0.5  # bubble 매칭 최소 겹침 비율
+from src.services.inpainting.utils import (
+    INSCRIBED_RATIO,
+    calc_render_bbox,
+    clip_to_bounds,
+    find_bubble,
+    inscribed_rect,
+)
 
 
 class InpaintingError(Exception):
     pass
-
-
-def calc_overlap_ratio(box_a: BBox, box_b: BBox) -> float:
-    """두 박스의 겹침 비율 계산 (box_a 면적 기준, 순수 함수)"""
-    area_a = box_a.width * box_a.height
-    if area_a <= 0:
-        return 0.0
-
-    ix1 = max(box_a.x1, box_b.x1)
-    iy1 = max(box_a.y1, box_b.y1)
-    ix2 = min(box_a.x2, box_b.x2)
-    iy2 = min(box_a.y2, box_b.y2)
-
-    if ix1 >= ix2 or iy1 >= iy2:
-        return 0.0
-
-    return (ix2 - ix1) * (iy2 - iy1) / area_a
-
-
-def clip_to_bounds(bbox: BBox, width: int, height: int) -> BBox:
-    """박스를 이미지 경계 내로 클리핑 (순수 함수)"""
-    return BBox(
-        x1=max(0, bbox.x1),
-        y1=max(0, bbox.y1),
-        x2=min(width, bbox.x2),
-        y2=min(height, bbox.y2),
-    )
 
 
 class SolidFillInpainting:
@@ -60,12 +37,12 @@ class SolidFillInpainting:
         updated_regions: list[TextRegion] = []
 
         for region in text_regions:
-            bubble = self._find_bubble(region.text_bbox, bubble_bboxes)
-            fill_bbox = self._calc_fill_bbox(region.text_bbox, bubble, (w, h))
-            render_bbox = self._calc_render_bbox(bubble, fill_bbox)
+            bubble = find_bubble(region.text_bbox, bubble_bboxes)
+            inpaint_bbox = self._calc_inpaint_bbox(region.text_bbox, bubble, (w, h))
+            render_bbox = calc_render_bbox(bubble, inpaint_bbox)
 
-            color = self._extract_bg_color(image, fill_bbox)
-            x1, y1, x2, y2 = fill_bbox.to_tuple()
+            color = self._extract_bg_color(image, inpaint_bbox)
+            x1, y1, x2, y2 = inpaint_bbox.to_tuple()
             cv2.rectangle(result, (x1, y1), (x2, y2), color, -1)
 
             updated_regions.append(
@@ -73,35 +50,20 @@ class SolidFillInpainting:
                     index=region.index,
                     text_bbox=region.text_bbox,
                     bubble_bbox=bubble,
-                    fill_bbox=fill_bbox,
+                    inpaint_bbox=inpaint_bbox,
                     render_bbox=render_bbox,
                 )
             )
 
         return result, updated_regions
 
-    def _find_bubble(self, text_bbox: BBox, bubbles: list[BBox]) -> BBox | None:
-        """텍스트와 가장 많이 겹치는 bubble 반환 (threshold 이상만)"""
-        best, best_overlap = None, 0.0
-
-        for bubble in bubbles:
-            overlap = calc_overlap_ratio(text_bbox, bubble)
-            if overlap > best_overlap:
-                best, best_overlap = bubble, overlap
-
-        return best if best_overlap > OVERLAP_THRESHOLD else None
-
-    def _inscribed_rect(self, bubble: BBox, ratio: float) -> BBox:
-        """타원에 내접하는 직사각형 (ratio=0.707이 수학적 최대)"""
-        cx, cy = bubble.center
-        hw, hh = bubble.width / 2, bubble.height / 2
-        return BBox(x1=cx - hw * ratio, y1=cy - hh * ratio, x2=cx + hw * ratio, y2=cy + hh * ratio)
-
-    def _calc_fill_bbox(self, text: BBox, bubble: BBox | None, img_size: tuple[int, int]) -> BBox:
+    def _calc_inpaint_bbox(
+        self, text: BBox, bubble: BBox | None, img_size: tuple[int, int]
+    ) -> BBox:
         w, h = img_size
 
         if bubble:
-            inscribed = self._inscribed_rect(bubble, INSCRIBED_RATIO)
+            inscribed = inscribed_rect(bubble, INSCRIBED_RATIO)
             pad_x, pad_y = text.width * self.padding_ratio, text.height * self.padding_ratio
             bbox = BBox(
                 x1=max(text.x1 - pad_x, inscribed.x1),
@@ -119,11 +81,6 @@ class SolidFillInpainting:
             )
 
         return clip_to_bounds(bbox, w, h)
-
-    def _calc_render_bbox(self, bubble: BBox | None, fill_bbox: BBox) -> BBox:
-        if bubble:
-            return self._inscribed_rect(bubble, INSCRIBED_RATIO)
-        return fill_bbox
 
     def _extract_bg_color(self, image: np.ndarray, bbox: BBox) -> tuple[int, int, int]:
         x1, y1, x2, y2 = bbox.to_tuple()
