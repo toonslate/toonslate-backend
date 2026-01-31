@@ -33,6 +33,6 @@ class InpaintingBackend(Protocol):
 
         Returns:
             (처리된 이미지, 업데이트된 TextRegion 리스트)
-            TextRegion에 bubble_bbox, fill_bbox, render_bbox가 채워짐
+            TextRegion에 bubble_bbox, inpaint_bbox, render_bbox가 채워짐
         """
         ...

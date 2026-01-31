@@ -97,7 +97,7 @@ class TextRegion(BaseModel):
     index: int  # 원본 detection 인덱스 (translation 매칭용)
     text_bbox: BBox
     bubble_bbox: BBox | None = None  # 포함하는 말풍선 (없으면 나레이션)
-    fill_bbox: BBox | None = None  # Inpainting용 확장된 영역
+    inpaint_bbox: BBox | None = None  # Inpainting용 확장된 영역
     render_bbox: BBox | None = None  # 렌더링용 안전 영역
 
 
