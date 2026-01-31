@@ -12,4 +12,4 @@ class RedisPrefix:
 
 
 class Limits:
-    DAILY_JOB = 10
+    DAILY_JOB = 100

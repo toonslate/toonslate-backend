@@ -29,7 +29,16 @@ class Settings(BaseSettings):
 
     # Gemini API
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model: str = "gemini-2.5-flash-lite"
+
+    # Replicate API
+    replicate_api_token: str = ""
+
+    # Inpainting
+    inpainting_provider: str = "solid_fill"  # "solid_fill" | "replicate_lama" | "iopaint_lama"
+    inpainting_debug_dir: str = ""
+    iopaint_space_url: str = "https://sanster-iopaint-lama.hf.space"
+    iopaint_timeout: int = 120
 
 
 @lru_cache
