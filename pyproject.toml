@@ -31,6 +31,7 @@ ai = [
     "google-genai>=1.0.0",
     "opencv-python-headless>=4.10.0",
     "pillow>=10.0.0",
+    "replicate>=1.0.0",
 ]
 
 [tool.ruff]
