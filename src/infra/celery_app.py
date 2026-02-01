@@ -18,5 +18,5 @@ celery_app.conf.update(
     timezone="UTC",
     enable_utc=True,
     result_expires=TTL.CELERY_RESULT,
-    imports=["src.tasks.process_job"],
+    imports=["src.infra.workers.translate_job"],
 )
