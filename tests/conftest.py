@@ -2,7 +2,6 @@ import tempfile
 from collections.abc import Generator
 from io import BytesIO
 from pathlib import Path
-from unittest.mock import patch
 
 import fakeredis
 import pytest
@@ -37,8 +36,7 @@ def client(
     storage = LocalStorage(base_dir=temp_upload_dir, base_url="http://localhost:8000/static")
     set_storage(storage)
     set_redis(fake_redis)
-    with patch("src.services.job.process_job"):
-        yield TestClient(app)
+    yield TestClient(app)
 
 
 @pytest.fixture
@@ -50,13 +48,4 @@ def upload_id(client: TestClient) -> str:
     return response.json()["uploadId"]
 
 
-@pytest.fixture
-def job_id(client: TestClient, upload_id: str) -> str:
-    response = client.post(
-        "/jobs",
-        json={
-            "uploadIds": [upload_id],
-            "options": {"sourceLanguage": "ko", "targetLanguage": "en"},
-        },
-    )
-    return response.json()["jobId"]
+# TODO: /translate 엔드포인트 테스트 추가 필요
