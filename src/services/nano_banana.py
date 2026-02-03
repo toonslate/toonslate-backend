@@ -14,6 +14,7 @@ TODO: 알려진 문제 (docs/tasks/nano-banana-improvements.md 참고)
 - Rate limit 대응 필요 (RPM=20, RPD=250)
 """
 
+import io
 import logging
 
 from google import genai
@@ -25,8 +26,13 @@ from src.config import get_settings
 logger = logging.getLogger(__name__)
 
 GEMINI_IMAGE_MODEL = "gemini-3-pro-image-preview"
-MAX_SEGMENT_HEIGHT = 1200
-MIN_SEGMENT_HEIGHT = 600
+
+# 출력 1K 기준 (9:16 aspect ratio → 최대 1344px 높이)
+# 축소 배율 2배 이상이면 텍스트 품질 저하 → 분할 필요
+EXPECTED_OUTPUT_HEIGHT = 1344
+MAX_SCALE_RATIO = 2.0
+MAX_SEGMENT_HEIGHT = int(EXPECTED_OUTPUT_HEIGHT * MAX_SCALE_RATIO)  # 2688
+MIN_SEGMENT_HEIGHT = int(MAX_SEGMENT_HEIGHT * 0.6)  # 1612
 WHITESPACE_THRESHOLD = 240
 
 TRANSLATE_PROMPT = (
@@ -167,10 +173,10 @@ def translate_segment(client: genai.Client, image: Image.Image) -> Image.Image:
         raise NanoBananaError("응답에 parts가 없습니다")
 
     for part in response.parts:
-        if part.inline_data is not None:
-            # as_image()는 PIL.Image.Image를 반환하지만 SDK 타입 정의가 부정확
-            result: Image.Image = part.as_image()  # type: ignore[assignment]
-            return result
+        if part.inline_data is not None and part.inline_data.data is not None:
+            image_bytes = part.inline_data.data
+            result = Image.open(io.BytesIO(image_bytes))
+            return result.convert("RGB")
 
     raise NanoBananaError("응답에 이미지가 없습니다")
 
