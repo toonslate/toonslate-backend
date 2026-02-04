@@ -36,7 +36,9 @@ MIN_SEGMENT_HEIGHT = int(MAX_SEGMENT_HEIGHT * 0.6)  # 1612
 WHITESPACE_THRESHOLD = 240
 
 TRANSLATE_PROMPT = (
-    "Change all Korean text in this webtoon to English. Keep everything else exactly the same."
+    "Change all Korean text in this webtoon to English "
+    "so that English-speaking readers can fully understand the content. "
+    "Keep everything else exactly the same."
 )
 
 
