@@ -19,3 +19,6 @@ uploads/
 clean/
 result/
 debug_output/
+
+# Local scripts (테스트용)
+scripts/
