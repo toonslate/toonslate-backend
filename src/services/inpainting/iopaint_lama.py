@@ -77,6 +77,19 @@ class IOPaintLamaInpainting:
 
         return clean_image, updated_regions
 
+    def inpaint_mask(self, image: np.ndarray, mask: np.ndarray) -> np.ndarray:
+        """마스크 기반 inpainting (erase 서비스용)
+
+        Args:
+            image: RGB 이미지
+            mask: 그레이스케일 마스크 (255 = 제거 영역)
+
+        Returns:
+            inpainting된 RGB 이미지
+        """
+        result_bgr = self._call_iopaint(image, mask)
+        return cv2.cvtColor(result_bgr, cv2.COLOR_BGR2RGB)
+
     def _calc_inpaint_bbox(self, text: BBox, img_size: tuple[int, int]) -> BBox:
         """text_bbox 기반 inpaint 영역 계산 (padding 없음)"""
         w, h = img_size

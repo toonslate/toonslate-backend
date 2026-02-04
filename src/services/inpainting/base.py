@@ -15,7 +15,8 @@ class InpaintingBackend(Protocol):
 
     구현체:
     - SolidFillInpainting: 단색 채우기 (MVP)
-    - ReplicateLamaInpainting: Replicate LaMa API (향후)
+    - ReplicateLamaInpainting: Replicate LaMa API
+    - IOPaintLamaInpainting: IOPaint HuggingFace Space
     """
 
     def inpaint(
@@ -34,5 +35,17 @@ class InpaintingBackend(Protocol):
         Returns:
             (처리된 이미지, 업데이트된 TextRegion 리스트)
             TextRegion에 bubble_bbox, inpaint_bbox, render_bbox가 채워짐
+        """
+        ...
+
+    def inpaint_mask(self, image: np.ndarray, mask: np.ndarray) -> np.ndarray:
+        """마스크 기반 inpainting (erase 서비스용)
+
+        Args:
+            image: RGB 이미지 (numpy 배열)
+            mask: 그레이스케일 마스크 (255 = 제거 영역)
+
+        Returns:
+            inpainting된 RGB 이미지
         """
         ...
