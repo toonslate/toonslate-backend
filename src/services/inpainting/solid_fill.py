@@ -57,6 +57,20 @@ class SolidFillInpainting:
 
         return result, updated_regions
 
+    def inpaint_mask(self, image: np.ndarray, mask: np.ndarray) -> np.ndarray:
+        """마스크 기반 inpainting (OpenCV TELEA 알고리즘)
+
+        Args:
+            image: RGB 이미지
+            mask: 그레이스케일 마스크 (255 = 제거 영역)
+
+        Returns:
+            inpainting된 RGB 이미지
+        """
+        image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        result_bgr = cv2.inpaint(image_bgr, mask, inpaintRadius=3, flags=cv2.INPAINT_TELEA)
+        return cv2.cvtColor(result_bgr, cv2.COLOR_BGR2RGB)
+
     def _calc_inpaint_bbox(
         self, text: BBox, bubble: BBox | None, img_size: tuple[int, int]
     ) -> BBox:

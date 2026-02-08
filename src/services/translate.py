@@ -12,7 +12,7 @@ from typing import Literal, cast
 from pydantic import BaseModel
 
 from src.config import get_settings
-from src.constants import TTL, Limits, RedisPrefix
+from src.constants import TTL, Limits, RedisPrefix, TranslateId
 from src.infra.redis import get_redis
 from src.schemas.base import BaseSchema
 from src.services.upload import get_upload
@@ -98,7 +98,7 @@ class RateLimitExceededError(Exception):
 
 
 def _generate_translate_id() -> str:
-    return f"tr_{uuid.uuid4().hex[:8]}"
+    return f"{TranslateId.PREFIX}{uuid.uuid4().hex[:8]}"
 
 
 def _hash_ip(ip: str) -> str:

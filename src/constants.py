@@ -2,6 +2,13 @@
 # 현재 값은 개발/테스트용. 포트폴리오 서비스 특성상 일주일에 웹툰 1화 정도가 적절.
 # 예: DAILY_TRANSLATE = 10 (약 2화/주)
 
+import re
+
+
+class TranslateId:
+    PREFIX = "tr_"
+    PATTERN = re.compile(r"^tr_[a-f0-9]{8}$")
+
 
 class TTL:
     UPLOAD = 60 * 60 * 24

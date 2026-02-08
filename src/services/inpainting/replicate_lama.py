@@ -81,6 +81,19 @@ class ReplicateLamaInpainting:
 
         return clean_image, updated_regions
 
+    def inpaint_mask(self, image: np.ndarray, mask: np.ndarray) -> np.ndarray:
+        """마스크 기반 inpainting (erase 서비스용)
+
+        Args:
+            image: RGB 이미지
+            mask: 그레이스케일 마스크 (255 = 제거 영역)
+
+        Returns:
+            inpainting된 RGB 이미지
+        """
+        result_bgr = self._call_replicate(image, mask)
+        return cv2.cvtColor(result_bgr, cv2.COLOR_BGR2RGB)
+
     def _calc_inpaint_bbox(self, text: BBox, img_size: tuple[int, int]) -> BBox:
         """LaMa용 넉넉한 마스크 영역 - 말풍선 경계 무시"""
         w, h = img_size
