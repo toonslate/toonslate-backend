@@ -28,7 +28,8 @@ class Settings(BaseSettings):
     hf_space_url: str = "lazistar/toonslate-detector"
     hf_api_timeout: int = 120
 
-    # Gemini API
+    # Translation
+    translation_provider: str = "gemini"  # "gemini"
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.5-flash-lite"
 
