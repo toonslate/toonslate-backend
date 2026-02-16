@@ -8,6 +8,7 @@ from src.services.detection import get_detection, set_detection
 from src.services.detection.hf_space import HFSpaceDetection
 
 
+# TODO: 캐싱 테스트 추가 (get_detection() 두 번 호출 시 같은 인스턴스 반환)
 class TestGetDetection:
     def setup_method(self) -> None:
         set_detection(None)

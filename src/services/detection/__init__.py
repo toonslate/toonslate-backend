@@ -17,6 +17,7 @@ from src.services.detection.schemas import DetectionResult
 
 __all__ = ["Detector", "DetectionResult", "get_detection", "set_detection"]
 
+# TODO: _backend → _detector 로 네이밍 변경 (translation 모듈과 통일)
 _backend: Detector | None = None
 
 
