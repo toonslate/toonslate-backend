@@ -1398,6 +1398,7 @@ dev = [
 test = [
     { name = "fakeredis", extra = ["lua"] },
     { name = "httpx" },
+    { name = "numpy" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
 ]
@@ -1429,6 +1430,7 @@ dev = [
 test = [
     { name = "fakeredis", extras = ["lua"], specifier = ">=2.33.0" },
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "numpy", specifier = ">=2.0.0" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.25.0" },
 ]
