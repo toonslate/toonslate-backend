@@ -1,4 +1,4 @@
-"""Nano Banana 번역 작업 처리
+"""번역 파이프라인 작업 처리
 
 Celery 워커에서 실행되는 백그라운드 태스크.
 """
@@ -16,7 +16,7 @@ from src.constants import RedisPrefix
 from src.infra.celery_app import celery_app
 from src.infra.redis import get_redis
 from src.infra.storage import get_storage
-from src.services.nano_banana import NanoBananaError, translate_image
+from src.services.pipeline import translate_image
 
 logger = logging.getLogger(__name__)
 
@@ -113,11 +113,6 @@ def translate_job(translate_id: str) -> dict[str, Any]:
 
         logger.info(f"[{translate_id}] 번역 완료: {result_relative}")
         return {"status": "completed", "result_url": result_url}
-
-    except NanoBananaError as e:
-        logger.error(f"[{translate_id}] Nano Banana 오류: {e}")
-        _update_status(translate_id, "failed", error_message=str(e))
-        return {"status": "failed", "error": str(e)}
 
     except SoftTimeLimitExceeded:
         logger.error(f"[{translate_id}] 시간 초과")

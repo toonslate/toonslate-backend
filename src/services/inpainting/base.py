@@ -1,4 +1,4 @@
-"""Inpainting 백엔드 Protocol
+"""Inpainting Protocol 정의
 
 스왑 가능한 인페인팅 구현을 위한 인터페이스 정의
 """
@@ -10,13 +10,58 @@ import numpy as np
 from src.schemas.pipeline import BBox, TextRegion
 
 
-class InpaintingBackend(Protocol):
-    """인페인팅 백엔드 인터페이스
+class BubbleCleaner(Protocol):
+    """말풍선 텍스트 제거기
+
+    단색 배경(말풍선 내부) 텍스트를 정리.
+    regions에는 bubble_bbox가 이미 설정된 상태.
+    """
+
+    def clean(
+        self, image: np.ndarray, regions: list[TextRegion]
+    ) -> tuple[np.ndarray, list[TextRegion]]:
+        """말풍선 영역 텍스트 제거
+
+        Returns:
+            (처리된 이미지, inpaint_bbox/render_bbox가 설정된 regions)
+        """
+        ...
+
+
+class BackgroundRestorer(Protocol):
+    """복잡한 배경의 텍스트 영역을 AI로 복원"""
+
+    def restore(
+        self, image: np.ndarray, regions: list[TextRegion]
+    ) -> tuple[np.ndarray, list[TextRegion]]:
+        """free text 영역 텍스트 제거 (마스크 생성 → AI 복원)
+
+        Returns:
+            (복원된 이미지, inpaint_bbox/render_bbox가 설정된 regions)
+        """
+        ...
+
+    def restore_mask(self, image: np.ndarray, mask: np.ndarray) -> np.ndarray:
+        """마스크 기반 복원 (Erase API용)
+
+        Args:
+            image: RGB 이미지
+            mask: 그레이스케일 마스크 (255 = 제거 영역)
+
+        Returns:
+            복원된 RGB 이미지
+        """
+        ...
+
+
+class Inpainter(Protocol):
+    """인페인팅 인터페이스
 
     구현체:
-    - SolidFillInpainting: 단색 채우기 (MVP)
-    - ReplicateLamaInpainting: Replicate LaMa API
-    - IOPaintLamaInpainting: IOPaint HuggingFace Space
+    - RoutedInpainting: 영역별 라우팅 (BubbleCleaner + BackgroundRestorer)
+    - SolidFillInpainting: 단색 채우기 (레거시)
+    - ReplicateLamaInpainting: Replicate LaMa API (레거시)
+    - IOPaintLamaInpainting: IOPaint HuggingFace Space (레거시)
     """
 
     def inpaint(

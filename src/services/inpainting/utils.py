@@ -30,12 +30,15 @@ def calc_overlap_ratio(box_a: BBox, box_b: BBox) -> float:
 
 
 def clip_to_bounds(bbox: BBox, width: int, height: int) -> BBox:
-    """박스를 이미지 경계 내로 클리핑"""
+    """박스를 이미지 경계 [0, width] x [0, height] 내로 클리핑
+
+    완전히 경계 밖이면 zero-area BBox 반환.
+    """
     return BBox(
-        x1=max(0, bbox.x1),
-        y1=max(0, bbox.y1),
-        x2=min(width, bbox.x2),
-        y2=min(height, bbox.y2),
+        x1=min(width, max(0, bbox.x1)),
+        y1=min(height, max(0, bbox.y1)),
+        x2=min(width, max(0, bbox.x2)),
+        y2=min(height, max(0, bbox.y2)),
     )
 
 
