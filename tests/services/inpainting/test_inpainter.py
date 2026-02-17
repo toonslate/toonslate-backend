@@ -44,7 +44,7 @@ class TestRoutedInpainting:
         self.background_restorer.restore.return_value = (cleaned_image, [])
 
         region = _region(0, 10, 10, 90, 90)
-        result_image, result_regions = self.inpainter.inpaint(image, [region], [BUBBLE])
+        _, result_regions = self.inpainter.inpaint(image, [region], [BUBBLE])
 
         self.bubble_cleaner.clean.assert_called_once()
         assert len(result_regions) == 1
@@ -62,7 +62,7 @@ class TestRoutedInpainting:
         self.background_restorer.restore.return_value = (cleaned_image, [free_region])
 
         region = _region(0, 200, 200, 300, 300)
-        result_image, result_regions = self.inpainter.inpaint(image, [region], [BUBBLE])
+        _, result_regions = self.inpainter.inpaint(image, [region], [BUBBLE])
 
         self.background_restorer.restore.assert_called_once()
         assert len(result_regions) == 1
@@ -98,7 +98,7 @@ class TestRoutedInpainting:
         self.bubble_cleaner.clean.return_value = (image, [])
         self.background_restorer.restore.return_value = (image, [])
 
-        result_image, result_regions = self.inpainter.inpaint(image, [], [])
+        _, result_regions = self.inpainter.inpaint(image, [], [])
         assert result_regions == []
 
     def test_inpaint_mask_delegates_to_restorer(self) -> None:

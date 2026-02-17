@@ -2,6 +2,9 @@
 
 from unittest.mock import patch
 
+import numpy as np
+
+from src.schemas.pipeline import BBox, TextRegion
 from src.services.inpainting import get_inpainting, set_inpainting
 from src.services.inpainting.inpainter import RoutedInpainting
 from src.services.inpainting.solid_fill import SolidFillInpainting
@@ -54,8 +57,13 @@ class TestGetInpainting:
 
 
 class MockInpainter:
-    def inpaint(self, image: object, text_regions: object, bubble_bboxes: object) -> object:
-        return None
+    def inpaint(
+        self,
+        image: np.ndarray,
+        text_regions: list[TextRegion],
+        bubble_bboxes: list[BBox],
+    ) -> tuple[np.ndarray, list[TextRegion]]:
+        return image, []
 
-    def inpaint_mask(self, image: object, mask: object) -> object:
-        return None
+    def inpaint_mask(self, image: np.ndarray, mask: np.ndarray) -> np.ndarray:
+        return image

@@ -42,7 +42,8 @@ class HFSpaceDetection:
         last_error: Exception | None = None
         for attempt in range(1 + max_retries):
             try:
-                return client.predict(handle_file(image_path), api_name="/detect")
+                # gradio-client 타입 정의 불완전
+                return client.predict(handle_file(image_path), api_name="/detect")  # pyright: ignore[reportUnknownMemberType]
             except Exception as e:
                 last_error = e
                 if attempt < max_retries:

@@ -1,5 +1,6 @@
 """HFSpaceDetection 구현체 테스트"""
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -15,7 +16,7 @@ MOCK_API_RESPONSE = {
     "text_confs": [0.92, 0.88],
 }
 
-MOCK_EMPTY_RESPONSE = {
+MOCK_EMPTY_RESPONSE: dict[str, Any] = {
     "image_size": {"width": 800, "height": 1200},
     "bubbles": [],
     "bubble_confs": [],

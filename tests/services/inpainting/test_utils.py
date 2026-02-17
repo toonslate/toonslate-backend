@@ -1,5 +1,8 @@
 """Inpainting utils 순수 함수 테스트"""
 
+# pytest.approx 타입 정의 불완전
+# pyright: reportUnknownMemberType=false
+
 import pytest
 
 from src.schemas.pipeline import BBox

@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
+from src.schemas.pipeline import BBox, TranslationResult
 from src.services.translation import get_translation, set_translation
 from src.services.translation.gemini import GeminiTranslation
 
@@ -42,5 +43,5 @@ class TestGetTranslation:
 
 
 class MockTranslator:
-    def translate(self, image_path: str, bboxes: object) -> object:
-        return None
+    def translate(self, image_path: str, bboxes: list[BBox]) -> list[TranslationResult]:
+        return []

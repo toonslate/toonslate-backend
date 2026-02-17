@@ -6,6 +6,7 @@ import pytest
 
 from src.services.detection import get_detection, set_detection
 from src.services.detection.hf_space import HFSpaceDetection
+from src.services.detection.schemas import DetectionResult, ImageSize
 
 
 # TODO: 캐싱 테스트 추가 (get_detection() 두 번 호출 시 같은 인스턴스 반환)
@@ -38,5 +39,11 @@ class TestGetDetection:
 
 
 class MockDetector:
-    def detect(self, image_path: str) -> object:
-        return None
+    def detect(self, image_path: str) -> DetectionResult:
+        return DetectionResult(
+            image_size=ImageSize(width=0, height=0),
+            texts=[],
+            text_confs=[],
+            bubbles=[],
+            bubble_confs=[],
+        )
