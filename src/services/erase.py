@@ -65,6 +65,7 @@ class EraseRequest(BaseSchema):
 
     translate_id: str
     mask_image: str  # base64 PNG
+    source_image: str | None = None  # base64 PNG, 없으면 디스크 파일 사용
 
 
 class EraseResponse(BaseSchema):
@@ -159,13 +160,18 @@ def erase_region(request: EraseRequest) -> EraseResponse:
     Raises:
         EraseError: 모든 에러 (code로 구분)
     """
-    image_path = _get_result_image_path(request.translate_id)
+    _validate_translate_id(request.translate_id)
 
-    img = cv2.imread(image_path)
-    if img is None:
-        raise EraseError("INPAINTING_FAILED", f"이미지 로드 실패: {image_path}")
-
-    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    if request.source_image:
+        img_rgb = _b64_to_numpy(request.source_image)
+        if len(img_rgb.shape) == 3 and img_rgb.shape[2] == 4:
+            img_rgb = cv2.cvtColor(img_rgb, cv2.COLOR_RGBA2RGB)
+    else:
+        image_path = _get_result_image_path(request.translate_id)
+        img = cv2.imread(image_path)
+        if img is None:
+            raise EraseError("INPAINTING_FAILED", f"이미지 로드 실패: {image_path}")
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
     mask = _b64_to_numpy(request.mask_image)
     mask = ensure_grayscale_mask(mask)

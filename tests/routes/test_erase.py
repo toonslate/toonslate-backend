@@ -152,3 +152,67 @@ class TestErasePost:
 
         assert response.status_code == 400
         assert response.json()["detail"]["code"] == "INVALID_TRANSLATE_ID"
+
+    def test_success_with_source_image(
+        self,
+        client: TestClient,
+        test_mask: str,
+        test_source_image: str,
+        setup_translate: "SetupTranslateFunc",
+        mock_inpainting: None,
+    ) -> None:
+        setup_translate("tr_a1b2c3d4")
+
+        response = client.post(
+            "/erase",
+            json={
+                "translateId": "tr_a1b2c3d4",
+                "maskImage": test_mask,
+                "sourceImage": test_source_image,
+            },
+        )
+
+        assert response.status_code == 200
+        assert "resultImage" in response.json()
+
+    def test_source_image_bypasses_redis_and_file_checks(
+        self,
+        client: TestClient,
+        test_mask: str,
+        test_source_image: str,
+        mock_inpainting: None,
+    ) -> None:
+        """sourceImage가 있으면 Redis/디스크 파일 검증을 건너뜀.
+
+        FE가 캔버스 이미지를 보유하고 있다는 것 자체가 완료 상태의 증거.
+        translate_id 형식 검증만 수행.
+        """
+        response = client.post(
+            "/erase",
+            json={
+                "translateId": "tr_a1b2c3d4",
+                "maskImage": test_mask,
+                "sourceImage": test_source_image,
+            },
+        )
+
+        assert response.status_code == 200
+        assert "resultImage" in response.json()
+
+    def test_invalid_source_image(
+        self,
+        client: TestClient,
+        test_mask: str,
+        mock_inpainting: None,
+    ) -> None:
+        response = client.post(
+            "/erase",
+            json={
+                "translateId": "tr_a1b2c3d4",
+                "maskImage": test_mask,
+                "sourceImage": "not-valid-base64!!!",
+            },
+        )
+
+        assert response.status_code == 500
+        assert response.json()["detail"]["code"] == "INPAINTING_FAILED"
