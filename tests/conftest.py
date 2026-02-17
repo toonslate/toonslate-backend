@@ -78,6 +78,15 @@ def test_rgba_mask() -> str:
 
 
 @pytest.fixture
+def test_source_image() -> str:
+    """100x100 RGB 소스 이미지 (base64)"""
+    img = Image.new("RGB", (100, 100), color="blue")
+    buffer = BytesIO()
+    img.save(buffer, format="PNG")
+    return base64.b64encode(buffer.getvalue()).decode()
+
+
+@pytest.fixture
 def setup_translate(
     fake_redis: fakeredis.FakeRedis,
     temp_upload_dir: Path,
