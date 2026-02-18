@@ -2,12 +2,14 @@ from io import BytesIO
 
 from fastapi.testclient import TestClient
 
+from tests.conftest import make_test_image
+
 
 class TestUploadPost:
     def test_upload_jpeg(self, client: TestClient) -> None:
         response = client.post(
             "/upload",
-            files={"file": ("test.jpg", BytesIO(b"fake jpeg"), "image/jpeg")},
+            files={"file": ("test.jpg", make_test_image(), "image/jpeg")},
         )
 
         assert response.status_code == 201
@@ -22,7 +24,7 @@ class TestUploadPost:
     def test_upload_png(self, client: TestClient) -> None:
         response = client.post(
             "/upload",
-            files={"file": ("test.png", BytesIO(b"fake png"), "image/png")},
+            files={"file": ("test.png", make_test_image(fmt="PNG"), "image/png")},
         )
 
         assert response.status_code == 201
@@ -36,8 +38,16 @@ class TestUploadPost:
 
         assert response.status_code == 400
 
+    def test_reject_invalid_image_spec(self, client: TestClient) -> None:
+        response = client.post(
+            "/upload",
+            files={"file": ("narrow.jpg", make_test_image(width=400, height=600), "image/jpeg")},
+        )
+
+        assert response.status_code == 400
+
     def test_reject_oversized_file(self, client: TestClient) -> None:
-        large_content = b"x" * (10 * 1024 * 1024 + 1)  # 10MB + 1 byte
+        large_content = b"x" * (5 * 1024 * 1024 + 1)  # 5MB + 1 byte
         response = client.post(
             "/upload",
             files={"file": ("large.jpg", BytesIO(large_content), "image/jpeg")},
@@ -50,7 +60,7 @@ class TestUploadGet:
     def test_get_upload(self, client: TestClient) -> None:
         upload_response = client.post(
             "/upload",
-            files={"file": ("test.jpg", BytesIO(b"fake jpeg"), "image/jpeg")},
+            files={"file": ("test.jpg", make_test_image(), "image/jpeg")},
         )
         upload_id = upload_response.json()["uploadId"]
 

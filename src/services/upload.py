@@ -56,7 +56,7 @@ async def create_upload(file: UploadFile) -> UploadResponse:
     )
 
     try:
-        redis.set(f"{RedisPrefix.UPLOAD}:{upload_id}", metadata.model_dump_json(), ex=TTL.UPLOAD)
+        redis.set(f"{RedisPrefix.UPLOAD}:{upload_id}", metadata.model_dump_json(), ex=TTL.DATA)
     except Exception:
         storage.delete(path)
         raise

@@ -9,6 +9,7 @@ from src.config import get_settings
 from src.infra.redis import close_redis
 from src.infra.storage import get_storage
 from src.infra.storage.local import LocalStorage
+from src.routes.batch import router as batch_router
 from src.routes.erase import router as erase_router
 from src.routes.translate import router as translate_router
 from src.routes.upload import router as upload_router
@@ -33,6 +34,7 @@ app.add_middleware(
 
 app.include_router(upload_router)
 app.include_router(translate_router)
+app.include_router(batch_router)
 app.include_router(erase_router)
 
 # LocalStorage인 경우에만 StaticFiles 마운트 (S3 전환 시 제거)

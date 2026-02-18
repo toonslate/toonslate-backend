@@ -27,5 +27,5 @@ def get_storage() -> StorageBackend:
     return _StorageHolder.instance
 
 
-def set_storage(storage: StorageBackend) -> None:
+def set_storage(storage: StorageBackend | None) -> None:
     _StorageHolder.instance = storage

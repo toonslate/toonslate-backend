@@ -15,6 +15,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 
 from src.infra.workers.translate_job import translate_job
 from src.services import translate as translate_service
+from src.services.quota import QuotaExceededError, check_and_consume_quota, hash_ip, refund_quota
 
 router = APIRouter(prefix="/translate", tags=["translate"])
 logger = logging.getLogger(__name__)
@@ -23,12 +24,9 @@ logger = logging.getLogger(__name__)
 def _get_client_ip(req: Request) -> str:
     """클라이언트 IP 추출
 
-    프록시 환경에서는 X-Forwarded-For 헤더 확인.
+    X-Forwarded-For는 신뢰 프록시 설정 없이 사용하면 쿼터 우회가 가능하므로,
+    배포 인프라가 결정되기 전까지 req.client.host만 사용한다.
     """
-    forwarded = req.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-
     if req.client:
         return req.client.host
 
@@ -49,10 +47,10 @@ async def create_translate(
     req: Request,
 ) -> translate_service.TranslateResponse:
     """번역 작업 생성"""
-    client_ip = _get_client_ip(req)
+    hashed_ip = hash_ip(_get_client_ip(req))
 
     try:
-        response = await translate_service.create_translate(request, client_ip)
+        original_url = await translate_service.validate_upload_id(request.upload_id)
     except translate_service.InvalidUploadError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -61,22 +59,40 @@ async def create_translate(
                 "message": f"유효하지 않은 업로드 ID: {e.upload_id}",
             },
         ) from None
-    except translate_service.RateLimitExceededError:
+
+    try:
+        await check_and_consume_quota(hashed_ip, 1)
+    except QuotaExceededError:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail={"code": "RATE_LIMIT_EXCEEDED", "message": "일일 사용량 한도를 초과했습니다"},
+            detail={"code": "RATE_LIMIT_EXCEEDED", "message": "주간 사용량 한도를 초과했습니다"},
         ) from None
+
+    try:
+        response = await translate_service.create_translate(request, original_url)
+    except Exception:
+        try:
+            await refund_quota(hashed_ip, 1)
+        except Exception:
+            logger.error("쿼터 환급 실패")
+        raise
 
     try:
         await asyncio.to_thread(translate_job.delay, response.translate_id)
     except Exception as e:
         logger.error(f"Celery 큐잉 실패: {e}")
-        await translate_service.decrement_usage(client_ip)
-        await translate_service.update_translate_status(
-            response.translate_id,
-            "failed",
-            "작업 큐잉에 실패했습니다. 잠시 후 다시 시도해주세요.",
-        )
+        try:
+            await refund_quota(hashed_ip, 1)
+        except Exception:
+            logger.error("쿼터 환급 실패")
+        try:
+            await translate_service.update_translate_status(
+                response.translate_id,
+                "failed",
+                "작업 큐잉에 실패했습니다. 잠시 후 다시 시도해주세요.",
+            )
+        except Exception:
+            logger.error(f"상태 업데이트 실패: {response.translate_id}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail={

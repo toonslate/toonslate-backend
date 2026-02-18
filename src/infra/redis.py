@@ -24,5 +24,5 @@ def close_redis() -> None:
         _RedisHolder.client = None
 
 
-def set_redis(client: redis.Redis) -> None:
+def set_redis(client: redis.Redis | None) -> None:
     _RedisHolder.client = client

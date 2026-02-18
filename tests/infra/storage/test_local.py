@@ -5,6 +5,7 @@ from fastapi import HTTPException, UploadFile
 from starlette.datastructures import Headers
 
 from src.infra.storage.local import ALLOWED_TYPES, MAX_SIZE, LocalStorage
+from tests.conftest import make_test_image
 
 
 def create_upload_file(
@@ -21,7 +22,7 @@ def create_upload_file(
 
 class TestLocalStorageSave:
     async def test_save_jpeg(self, local_storage: LocalStorage) -> None:
-        file = create_upload_file(b"fake jpeg content", "image.jpg", "image/jpeg")
+        file = create_upload_file(make_test_image().read(), "image.jpg", "image/jpeg")
 
         path = await local_storage.save(file)
 
@@ -30,7 +31,7 @@ class TestLocalStorageSave:
         assert local_storage.exists(path)
 
     async def test_save_png(self, local_storage: LocalStorage) -> None:
-        file = create_upload_file(b"fake png content", "image.png", "image/png")
+        file = create_upload_file(make_test_image(fmt="PNG").read(), "image.png", "image/png")
 
         path = await local_storage.save(file)
 
@@ -38,7 +39,7 @@ class TestLocalStorageSave:
         assert local_storage.exists(path)
 
     async def test_save_custom_subdir(self, local_storage: LocalStorage) -> None:
-        file = create_upload_file(b"content", "test.jpg", "image/jpeg")
+        file = create_upload_file(make_test_image().read(), "test.jpg", "image/jpeg")
 
         path = await local_storage.save(file, subdir="clean")
 
@@ -63,7 +64,7 @@ class TestLocalStorageSave:
         assert "알 수 없음" in str(exc_info.value.detail)
 
     async def test_reject_oversized_file(self, local_storage: LocalStorage) -> None:
-        large_content = b"x" * (MAX_SIZE + 1)
+        large_content = b"\xff\xd8\xff" + b"x" * MAX_SIZE
         file = create_upload_file(large_content, "large.jpg", "image/jpeg")
 
         with pytest.raises(HTTPException) as exc_info:
@@ -74,7 +75,7 @@ class TestLocalStorageSave:
 
     async def test_default_extension_when_missing(self, local_storage: LocalStorage) -> None:
         file = UploadFile(
-            file=BytesIO(b"content"),
+            file=BytesIO(make_test_image().read()),
             filename="noext",
             headers=Headers({"content-type": "image/jpeg"}),
         )
@@ -93,13 +94,90 @@ class TestLocalStorageGetUrl:
 
 class TestLocalStorageExists:
     async def test_exists_true(self, local_storage: LocalStorage) -> None:
-        file = create_upload_file(b"content", "test.jpg", "image/jpeg")
+        file = create_upload_file(make_test_image().read(), "test.jpg", "image/jpeg")
         path = await local_storage.save(file)
 
         assert local_storage.exists(path) is True
 
     def test_exists_false(self, local_storage: LocalStorage) -> None:
         assert local_storage.exists("nonexistent/file.jpg") is False
+
+
+class TestImageValidation:
+    async def test_reject_fake_magic_bytes(self, local_storage: LocalStorage) -> None:
+        file = create_upload_file(b"not a real image", "fake.jpg", "image/jpeg")
+
+        with pytest.raises(HTTPException) as exc_info:
+            await local_storage.save(file)
+
+        assert exc_info.value.status_code == 400
+
+    async def test_reject_width_too_narrow(self, local_storage: LocalStorage) -> None:
+        file = create_upload_file(
+            make_test_image(width=500, height=800).read(), "narrow.jpg", "image/jpeg"
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await local_storage.save(file)
+
+        assert exc_info.value.status_code == 400
+
+    async def test_reject_pixel_count_exceeded(self, local_storage: LocalStorage) -> None:
+        file = create_upload_file(
+            make_test_image(width=2000, height=1600).read(), "big.jpg", "image/jpeg"
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await local_storage.save(file)
+
+        assert exc_info.value.status_code == 400
+
+    async def test_reject_aspect_ratio_exceeded(self, local_storage: LocalStorage) -> None:
+        file = create_upload_file(
+            make_test_image(width=600, height=1900).read(), "tall.jpg", "image/jpeg"
+        )
+
+        with pytest.raises(HTTPException) as exc_info:
+            await local_storage.save(file)
+
+        assert exc_info.value.status_code == 400
+
+    async def test_reject_content_type_mismatch(self, local_storage: LocalStorage) -> None:
+        png_bytes = make_test_image(fmt="PNG").read()
+        file = create_upload_file(png_bytes, "mismatch.jpg", "image/jpeg")
+
+        with pytest.raises(HTTPException) as exc_info:
+            await local_storage.save(file)
+
+        assert exc_info.value.status_code == 400
+        assert "불일치" in str(exc_info.value.detail)
+
+    async def test_accept_valid_image(self, local_storage: LocalStorage) -> None:
+        file = create_upload_file(
+            make_test_image(width=800, height=1200).read(), "valid.jpg", "image/jpeg"
+        )
+
+        path = await local_storage.save(file)
+
+        assert local_storage.exists(path)
+
+    async def test_accept_boundary_3mp(self, local_storage: LocalStorage) -> None:
+        file = create_upload_file(
+            make_test_image(width=1500, height=2000).read(), "boundary.jpg", "image/jpeg"
+        )
+
+        path = await local_storage.save(file)
+
+        assert local_storage.exists(path)
+
+    async def test_accept_boundary_ratio(self, local_storage: LocalStorage) -> None:
+        file = create_upload_file(
+            make_test_image(width=600, height=1800).read(), "ratio.jpg", "image/jpeg"
+        )
+
+        path = await local_storage.save(file)
+
+        assert local_storage.exists(path)
 
 
 class TestAllowedTypes:
