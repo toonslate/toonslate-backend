@@ -1,11 +1,21 @@
 import uuid
+from io import BytesIO
 from pathlib import Path
 
 from fastapi import HTTPException, UploadFile
+from PIL import Image
 
 ALLOWED_TYPES = {"image/jpeg", "image/png"}
-MAX_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_SIZE = 5 * 1024 * 1024  # 5MB
 CHUNK_SIZE = 1024 * 1024  # 1MB
+
+MAGIC_BYTES = {
+    b"\xff\xd8\xff": "image/jpeg",
+    b"\x89PNG": "image/png",
+}
+MIN_WIDTH = 600
+MAX_PIXELS = 3_000_000
+MAX_ASPECT_RATIO = 3.0
 
 
 class LocalStorage:
@@ -20,12 +30,15 @@ class LocalStorage:
     ) -> str:
         """
         Raises:
-            HTTPException(400): 지원하지 않는 파일 형식 또는 10MB 초과 시
+            HTTPException(400): 파일 형식, 크기, 이미지 규격 위반 시
         """
         self._validate_content_type(file.content_type)
         self._validate_size_header(file.size)
 
         content = await self._read_with_size_limit(file)
+        detected_type = self._detect_image_type(content)
+        self._validate_content_type_match(detected_type, file.content_type)
+        self._validate_image_dimensions(content)
 
         name = filename or uuid.uuid4().hex
         ext = Path(file.filename or "").suffix or ".jpg"
@@ -65,6 +78,44 @@ class LocalStorage:
             raise HTTPException(
                 status_code=400,
                 detail=f"파일 크기 초과: {size} bytes (최대 {MAX_SIZE} bytes)",
+            )
+
+    def _detect_image_type(self, content: bytes) -> str:
+        for magic, mime in MAGIC_BYTES.items():
+            if content.startswith(magic):
+                return mime
+        raise HTTPException(status_code=400, detail="유효하지 않은 이미지 파일")
+
+    def _validate_content_type_match(self, detected: str, declared: str | None) -> None:
+        if declared and detected != declared:
+            raise HTTPException(
+                status_code=400,
+                detail=f"파일 형식 불일치: 헤더 {declared}, 실제 {detected}",
+            )
+
+    def _validate_image_dimensions(self, content: bytes) -> None:
+        try:
+            img = Image.open(BytesIO(content))
+            width, height = img.size
+        except Exception as e:
+            raise HTTPException(status_code=400, detail="이미지 디코딩 실패") from e
+
+        if width < MIN_WIDTH:
+            raise HTTPException(
+                status_code=400,
+                detail=f"이미지 너비 부족: {width}px (최소 {MIN_WIDTH}px)",
+            )
+
+        if width * height > MAX_PIXELS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"총 픽셀수 초과: {width}x{height} = {width * height} (최대 {MAX_PIXELS})",
+            )
+
+        if height / width > MAX_ASPECT_RATIO:
+            raise HTTPException(
+                status_code=400,
+                detail=f"세로/가로 비율 초과: {height / width:.2f} (최대 {MAX_ASPECT_RATIO})",
             )
 
     async def _read_with_size_limit(self, file: UploadFile) -> bytes:

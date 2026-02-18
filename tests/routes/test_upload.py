@@ -38,8 +38,16 @@ class TestUploadPost:
 
         assert response.status_code == 400
 
+    def test_reject_invalid_image_spec(self, client: TestClient) -> None:
+        response = client.post(
+            "/upload",
+            files={"file": ("narrow.jpg", make_test_image(width=400, height=600), "image/jpeg")},
+        )
+
+        assert response.status_code == 400
+
     def test_reject_oversized_file(self, client: TestClient) -> None:
-        large_content = b"x" * (10 * 1024 * 1024 + 1)  # 10MB + 1 byte
+        large_content = b"x" * (5 * 1024 * 1024 + 1)  # 5MB + 1 byte
         response = client.post(
             "/upload",
             files={"file": ("large.jpg", BytesIO(large_content), "image/jpeg")},
