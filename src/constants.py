@@ -14,7 +14,6 @@ class BatchId:
 class TTL:
     DATA = 60 * 60 * 2  # 2시간 (upload/translate/batch 공통)
     CELERY_RESULT = 60 * 60 * 2
-    LEGACY_USAGE = 60 * 60 * 24  # quota.py 이전 전까지 임시 유지
 
 
 class RedisPrefix:

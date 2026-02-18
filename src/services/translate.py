@@ -3,7 +3,6 @@
 비즈니스 로직만 담당. Task 호출은 route에서 처리.
 """
 
-import hashlib
 import json
 import uuid
 from datetime import UTC, datetime
@@ -11,7 +10,6 @@ from typing import Literal, cast
 
 from pydantic import BaseModel
 
-from src.config import get_settings
 from src.constants import TTL, RedisPrefix, TranslateId
 from src.infra.redis import get_redis
 from src.schemas.base import BaseSchema
@@ -93,78 +91,16 @@ class TranslateNotFoundError(Exception):
         super().__init__(f"존재하지 않는 번역 ID: {translate_id}")
 
 
-class RateLimitExceededError(Exception):
-    pass
-
-
 def _generate_translate_id() -> str:
     return f"{TranslateId.PREFIX}{uuid.uuid4().hex[:8]}"
 
 
-def _hash_ip(ip: str) -> str:
-    secret = get_settings().ip_hash_secret
-    return hashlib.sha256(f"{secret}:{ip}".encode()).hexdigest()[:16]
-
-
-def _get_usage_key(client_ip: str) -> str:
-    hashed_ip = _hash_ip(client_ip)
-    today = datetime.now(UTC).strftime("%Y-%m-%d")
-    return f"{RedisPrefix.USAGE}:translate:{hashed_ip}:{today}"
-
-
-async def _validate_upload_id(upload_id: str) -> str:
+async def validate_upload_id(upload_id: str) -> str:
     """업로드 ID 검증 후 원본 이미지 URL 반환"""
     upload = await get_upload(upload_id)
     if upload is None:
         raise InvalidUploadError(upload_id)
     return upload.image_url
-
-
-_RATE_LIMIT_SCRIPT = """
-local current = tonumber(redis.call("GET", KEYS[1]) or "0")
-if current >= tonumber(ARGV[1]) then
-    return -1
-end
-redis.call("INCR", KEYS[1])
-redis.call("EXPIRE", KEYS[1], ARGV[2])
-return current + 1
-"""
-
-
-async def _check_and_increment_usage(client_ip: str) -> None:
-    redis = get_redis()
-    usage_key = _get_usage_key(client_ip)
-
-    result: int = redis.eval(  # type: ignore[assignment]
-        _RATE_LIMIT_SCRIPT,
-        1,
-        usage_key,
-        20,  # TODO: quota.py로 이전 예정
-        TTL.LEGACY_USAGE,
-    )
-
-    if result == -1:
-        raise RateLimitExceededError()
-
-
-_DECREMENT_SCRIPT = """
-local current = tonumber(redis.call("GET", KEYS[1]) or "0")
-if current > 0 then
-    redis.call("DECR", KEYS[1])
-    return 1
-end
-return 0
-"""
-
-
-async def decrement_usage(client_ip: str) -> None:
-    """사용량 롤백 (큐잉 실패 시)
-
-    0 이하로 내려가지 않도록 조건부 감소.
-    """
-    redis = get_redis()
-    usage_key = _get_usage_key(client_ip)
-    redis.eval(_DECREMENT_SCRIPT, 1, usage_key)
 
 
 async def update_translate_status(
@@ -196,12 +132,9 @@ async def update_translate_status(
     redis.set(key, metadata.model_dump_json(), keepttl=True)
 
 
-async def create_translate(request: TranslateRequest, client_ip: str) -> TranslateResponse:
-    """번역 작업 생성 (메타데이터만, task 호출은 route에서)"""
+async def create_translate(request: TranslateRequest, original_url: str) -> TranslateResponse:
+    """번역 작업 생성 (메타데이터만, 검증/쿼터/task 호출은 route에서)"""
     redis = get_redis()
-
-    original_url = await _validate_upload_id(request.upload_id)
-    await _check_and_increment_usage(client_ip)
 
     translate_id = _generate_translate_id()
     created_at = datetime.now(UTC).isoformat().replace("+00:00", "Z")
