@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import ANY, MagicMock, patch
 
 from fastapi.testclient import TestClient
 
@@ -47,6 +47,21 @@ class TestCreateBatch:
         response = client.post("/batch", json={"uploadIds": ids})
 
         assert response.status_code == 422
+
+    def test_all_queuing_failed_returns_503(self, client: TestClient) -> None:
+        ids = [_upload_image(client) for _ in range(2)]
+        mock_job = MagicMock()
+        mock_job.delay.side_effect = RuntimeError("broker down")
+
+        with (
+            patch("src.routes.batch.translate_job", mock_job),
+            patch("src.routes.batch.refund_quota") as mock_refund,
+        ):
+            response = client.post("/batch", json={"uploadIds": ids})
+
+        assert response.status_code == 503
+        assert response.json()["detail"]["code"] == "QUEUE_UNAVAILABLE"
+        mock_refund.assert_awaited_once_with(ANY, 2)
 
     def test_rate_limit_exceeded(self, client: TestClient) -> None:
         batch_size = Limits.MAX_BATCH_SIZE
