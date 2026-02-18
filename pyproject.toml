@@ -27,6 +27,7 @@ test = [
     "numpy>=2.0.0",
     "pytest>=8.0.0",
     "pytest-asyncio>=0.25.0",
+    "pytest-cov>=6.0.0",
 ]
 ai = [
     "google-genai>=1.0.0",
