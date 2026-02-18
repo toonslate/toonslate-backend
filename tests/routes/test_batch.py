@@ -79,7 +79,7 @@ class TestCreateBatch:
         images = response.json()["images"]
         assert images[0]["status"] == "pending"
         assert images[1]["status"] == "failed"
-        assert images[1]["error_message"] is not None
+        assert images[1]["errorMessage"] is not None
         mock_refund.assert_awaited_once_with(ANY, 1)
 
     def test_rate_limit_exceeded(self, client: TestClient) -> None:

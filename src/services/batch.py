@@ -27,7 +27,7 @@ from src.services.translate import (
 BatchStatus = Literal["processing", "completed", "partial_failure", "failed"]
 
 
-class BatchImageEntry(BaseModel):
+class BatchImageEntry(BaseSchema):
     order_index: int
     upload_id: str
     translate_id: str
