@@ -63,6 +63,21 @@ class TestCreateBatch:
         assert response.json()["detail"]["code"] == "QUEUE_UNAVAILABLE"
         mock_refund.assert_awaited_once_with(ANY, 2)
 
+    def test_partial_queuing_failure_returns_201(self, client: TestClient) -> None:
+        ids = [_upload_image(client) for _ in range(2)]
+        mock_job = MagicMock()
+        mock_job.delay.side_effect = [None, RuntimeError("broker down")]
+
+        with (
+            patch("src.routes.batch.translate_job", mock_job),
+            patch("src.routes.batch.refund_quota") as mock_refund,
+        ):
+            response = client.post("/batch", json={"uploadIds": ids})
+
+        assert response.status_code == 201
+        assert response.json()["status"] == "processing"
+        mock_refund.assert_awaited_once_with(ANY, 1)
+
     def test_rate_limit_exceeded(self, client: TestClient) -> None:
         batch_size = Limits.MAX_BATCH_SIZE
         batch_1 = [_upload_image(client) for _ in range(batch_size)]
