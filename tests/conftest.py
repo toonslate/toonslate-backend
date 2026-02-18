@@ -23,6 +23,15 @@ class SetupTranslateFunc(Protocol):
     def __call__(self, translate_id: str, status: str = "completed") -> None: ...
 
 
+def make_test_image(width: int = 800, height: int = 1200, fmt: str = "JPEG") -> BytesIO:
+    """테스트용 실제 이미지 바이트 생성"""
+    img = Image.new("RGB", (width, height), color="red")
+    buf = BytesIO()
+    img.save(buf, format=fmt)
+    buf.seek(0)
+    return buf
+
+
 @pytest.fixture
 def temp_upload_dir() -> Generator[Path, None, None]:
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -54,7 +63,7 @@ def client(
 def upload_id(client: TestClient) -> str:
     response = client.post(
         "/upload",
-        files={"file": ("test.jpg", BytesIO(b"fake jpeg"), "image/jpeg")},
+        files={"file": ("test.jpg", make_test_image(), "image/jpeg")},
     )
     return response.json()["uploadId"]
 

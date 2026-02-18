@@ -1,7 +1,3 @@
-# TODO: 현실적인 정책으로 변경 필요
-# 현재 값은 개발/테스트용. 포트폴리오 서비스 특성상 일주일에 웹툰 1화 정도가 적절.
-# 예: DAILY_TRANSLATE = 10 (약 2화/주)
-
 import re
 
 
@@ -10,18 +6,24 @@ class TranslateId:
     PATTERN = re.compile(r"^tr_[a-f0-9]{8}$")
 
 
+class BatchId:
+    PREFIX = "batch_"
+    PATTERN = re.compile(r"^batch_[a-f0-9]{8}$")
+
+
 class TTL:
-    UPLOAD = 60 * 60 * 24
-    TRANSLATE = 60 * 60 * 24
-    USAGE = 60 * 60 * 24
-    CELERY_RESULT = 60 * 60 * 24
+    DATA = 60 * 60 * 2  # 2시간 (upload/translate/batch 공통)
+    CELERY_RESULT = 60 * 60 * 2
+    LEGACY_USAGE = 60 * 60 * 24  # quota.py 이전 전까지 임시 유지
 
 
 class RedisPrefix:
     UPLOAD = "upload"
     TRANSLATE = "translate"
+    BATCH = "batch"
     USAGE = "usage"
 
 
 class Limits:
-    DAILY_TRANSLATE = 100
+    WEEKLY_IMAGES = 20  # 주 20장 (단일/배치 공유 쿼터)
+    MAX_BATCH_SIZE = 10

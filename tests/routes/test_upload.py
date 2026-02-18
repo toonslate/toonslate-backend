@@ -2,12 +2,14 @@ from io import BytesIO
 
 from fastapi.testclient import TestClient
 
+from tests.conftest import make_test_image
+
 
 class TestUploadPost:
     def test_upload_jpeg(self, client: TestClient) -> None:
         response = client.post(
             "/upload",
-            files={"file": ("test.jpg", BytesIO(b"fake jpeg"), "image/jpeg")},
+            files={"file": ("test.jpg", make_test_image(), "image/jpeg")},
         )
 
         assert response.status_code == 201
@@ -22,7 +24,7 @@ class TestUploadPost:
     def test_upload_png(self, client: TestClient) -> None:
         response = client.post(
             "/upload",
-            files={"file": ("test.png", BytesIO(b"fake png"), "image/png")},
+            files={"file": ("test.png", make_test_image(fmt="PNG"), "image/png")},
         )
 
         assert response.status_code == 201
@@ -50,7 +52,7 @@ class TestUploadGet:
     def test_get_upload(self, client: TestClient) -> None:
         upload_response = client.post(
             "/upload",
-            files={"file": ("test.jpg", BytesIO(b"fake jpeg"), "image/jpeg")},
+            files={"file": ("test.jpg", make_test_image(), "image/jpeg")},
         )
         upload_id = upload_response.json()["uploadId"]
 

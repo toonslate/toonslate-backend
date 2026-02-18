@@ -12,7 +12,7 @@ from typing import Literal, cast
 from pydantic import BaseModel
 
 from src.config import get_settings
-from src.constants import TTL, Limits, RedisPrefix, TranslateId
+from src.constants import TTL, RedisPrefix, TranslateId
 from src.infra.redis import get_redis
 from src.schemas.base import BaseSchema
 from src.services.upload import get_upload
@@ -139,8 +139,8 @@ async def _check_and_increment_usage(client_ip: str) -> None:
         _RATE_LIMIT_SCRIPT,
         1,
         usage_key,
-        Limits.DAILY_TRANSLATE,
-        TTL.USAGE,
+        20,  # TODO: quota.py로 이전 예정
+        TTL.LEGACY_USAGE,
     )
 
     if result == -1:
@@ -219,7 +219,7 @@ async def create_translate(request: TranslateRequest, client_ip: str) -> Transla
     redis.set(
         f"{RedisPrefix.TRANSLATE}:{translate_id}",
         metadata.model_dump_json(),
-        ex=TTL.TRANSLATE,
+        ex=TTL.DATA,
     )
 
     return TranslateResponse(
