@@ -44,19 +44,21 @@ def local_storage(temp_upload_dir: Path) -> LocalStorage:
 
 
 @pytest.fixture
-def fake_redis() -> fakeredis.FakeRedis:
-    return fakeredis.FakeRedis(decode_responses=True)
+def fake_redis() -> Generator[fakeredis.FakeRedis, None, None]:
+    r = fakeredis.FakeRedis(decode_responses=True)
+    set_redis(r)
+    yield r
+    set_redis(None)
 
 
-# TODO: teardown 추가 - 전역 스토리지/레디스 설정 원복 (테스트 간 누수 방지)
 @pytest.fixture
 def client(
     temp_upload_dir: Path, fake_redis: fakeredis.FakeRedis
 ) -> Generator[TestClient, None, None]:
     storage = LocalStorage(base_dir=temp_upload_dir, base_url="http://localhost:8000/static")
     set_storage(storage)
-    set_redis(fake_redis)
     yield TestClient(app)
+    set_storage(None)
 
 
 @pytest.fixture
