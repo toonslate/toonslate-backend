@@ -19,4 +19,5 @@ celery_app.conf.update(
     enable_utc=True,
     result_expires=TTL.CELERY_RESULT,
     imports=["src.infra.workers.translate_job"],
+    worker_prefetch_multiplier=1,
 )

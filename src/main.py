@@ -1,12 +1,12 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from src.config import get_settings
-from src.infra.redis import close_redis
+from src.infra.redis import close_redis, get_redis
 from src.infra.storage import get_storage
 from src.infra.storage.local import LocalStorage
 from src.routes.batch import router as batch_router
@@ -46,4 +46,16 @@ if isinstance(storage, LocalStorage):
 
 @app.get("/health")
 def health() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+@app.get("/health/ready")
+def readiness() -> dict[str, str]:
+    try:
+        get_redis().ping()  # pyright: ignore[reportUnknownMemberType]
+    except Exception as err:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="redis unreachable",
+        ) from err
     return {"status": "ok"}
