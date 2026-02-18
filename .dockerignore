@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.git/
+.env
+.ruff_cache/
+debug_output/
+tests/
+scripts/
+uploads/
+.pytest_cache/
+.pre-commit-config.yaml
