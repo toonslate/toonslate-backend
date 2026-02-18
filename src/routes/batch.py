@@ -80,13 +80,13 @@ async def create_batch(
             logger.error("쿼터 환급 실패")
         raise
 
-    failed_count = 0
+    failed_ids: set[str] = set()
     for image in response.images:
         try:
             await asyncio.to_thread(translate_job.delay, image.translate_id)
         except Exception:
             logger.error(f"Celery 큐잉 실패: {image.translate_id}")
-            failed_count += 1
+            failed_ids.add(image.translate_id)
             try:
                 await translate_service.update_translate_status(
                     image.translate_id,
@@ -95,6 +95,8 @@ async def create_batch(
                 )
             except Exception:
                 logger.error(f"상태 업데이트 실패: {image.translate_id}")
+
+    failed_count = len(failed_ids)
 
     if failed_count == image_count:
         try:
@@ -114,6 +116,13 @@ async def create_batch(
             await refund_quota(hashed_ip, failed_count)
         except Exception:
             logger.error("쿼터 부분 환급 실패")
+        error_msg = "작업 큐잉에 실패했습니다."
+        response.images = [
+            img.model_copy(update={"status": "failed", "error_message": error_msg})
+            if img.translate_id in failed_ids
+            else img
+            for img in response.images
+        ]
 
     return response
 
