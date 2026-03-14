@@ -34,15 +34,14 @@ class HFSpaceDetection:
             RuntimeError: API 호출 반복 실패 시
             ValidationError: API 응답 스키마 불일치 시 (재시도 없이 즉시)
         """
-        client = Client(self._space_url, httpx_kwargs={"timeout": self._api_timeout})
-        raw = self._call_with_retry(client, image_path, max_retries)
+        raw = self._call_with_retry(image_path, max_retries)
         return DetectionResult.model_validate(raw)
 
-    def _call_with_retry(self, client: Client, image_path: str, max_retries: int) -> Any:
+    def _call_with_retry(self, image_path: str, max_retries: int) -> Any:
         last_error: Exception | None = None
         for attempt in range(1 + max_retries):
             try:
-                # gradio-client 타입 정의 불완전
+                client = Client(self._space_url, httpx_kwargs={"timeout": self._api_timeout})
                 return client.predict(handle_file(image_path), api_name="/detect")  # pyright: ignore[reportUnknownMemberType]
             except Exception as e:
                 last_error = e
