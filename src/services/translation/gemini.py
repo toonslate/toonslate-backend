@@ -5,6 +5,7 @@
 import io
 import json
 import logging
+import re
 from typing import Any, cast
 
 from google import genai
@@ -87,13 +88,27 @@ class GeminiTranslation:
 
         try:
             raw_results = json.loads(response.text)
-        except json.JSONDecodeError as e:
-            raise TranslationError(f"JSON 파싱 실패: {e}") from e
+        except json.JSONDecodeError:
+            raw_results = self._merge_json_arrays(response.text)
 
         if not isinstance(raw_results, list):
             raise TranslationError(f"응답이 리스트가 아님: {type(raw_results).__name__}")
 
         return cast(list[dict[str, Any]], raw_results)
+
+    def _merge_json_arrays(self, text: str) -> list[dict[str, Any]]:
+        """여러 JSON 배열이 연속된 응답을 하나로 합침"""
+        merged: list[dict[str, Any]] = []
+        for match in re.finditer(r"\[.*?\]", text, re.DOTALL):
+            try:
+                parsed = json.loads(match.group())
+                if isinstance(parsed, list):
+                    merged.extend(cast(list[dict[str, Any]], parsed))
+            except json.JSONDecodeError:
+                continue
+        if not merged:
+            raise TranslationError(f"JSON 파싱 실패: {text[:200]}")
+        return merged
 
     def _map_results(
         self, raw_results: list[dict[str, Any]], original_indices: list[int]
